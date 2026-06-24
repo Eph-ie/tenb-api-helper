@@ -75,6 +75,45 @@ def write_json(rows: List[Dict[str, Any]], out_path: str) -> int:
     return len(rows)
 
 
+import time as _time
+
+
+def build_filters(
+    *,
+    severity: List[str] | None = None,
+    cve: List[str] | None = None,
+    kev: bool = False,
+    state: List[str] | None = None,
+    since: int | None = None,
+    days: int | None = None,
+) -> Dict[str, Any]:
+    """
+    Build the vuln-export `filters` object from the common report options.
+
+    Time handling matters: Tenable silently restricts the vuln export to the last
+    30 days unless a time-based filter is sent, so we always set `since` —
+    defaulting to 0 (everything) unless --since/--days narrow it.
+    """
+    filters: Dict[str, Any] = {}
+    if severity:
+        filters["severity"] = severity
+    if cve:
+        filters["cve_id"] = [c.strip().upper() for c in cve]
+    if kev:
+        # CISA Known Exploited Vulnerabilities catalogue.
+        filters["cve_category"] = ["cisa known exploitable"]
+    if state:
+        filters["state"] = [s.strip().upper() for s in state]
+
+    if since is not None:
+        filters["since"] = since
+    elif days is not None:
+        filters["since"] = int(_time.time()) - days * 86400
+    else:
+        filters["since"] = 0  # full export -- bypass the 30-day default window
+    return filters
+
+
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Export Tenable vulnerability findings (read-only).")
     parser.add_argument("--format", choices=["csv", "json"], default="csv")
@@ -84,6 +123,23 @@ def main(argv: List[str] | None = None) -> int:
         nargs="*",
         choices=["info", "low", "medium", "high", "critical"],
         help="Filter by severity, e.g. --severity critical high",
+    )
+    parser.add_argument(
+        "--cve",
+        nargs="*",
+        metavar="CVE-ID",
+        help="Only findings matching these CVE IDs, e.g. --cve CVE-2021-44228 (Log4Shell).",
+    )
+    parser.add_argument(
+        "--kev",
+        action="store_true",
+        help="Only vulnerabilities in the CISA Known Exploited Vulnerabilities catalogue.",
+    )
+    parser.add_argument(
+        "--state",
+        nargs="*",
+        choices=["open", "reopened", "fixed"],
+        help="Filter by finding state, e.g. --state fixed (for remediation reporting).",
     )
     parser.add_argument("--num-assets", type=int, default=500)
     parser.add_argument(
@@ -130,24 +186,14 @@ def main(argv: List[str] | None = None) -> int:
         print("Dry run OK -- credentials valid and vuln export endpoint reachable.")
         return 0
 
-    filters: Dict[str, Any] = {}
-    if args.severity:
-        filters["severity"] = args.severity
-
-    # IMPORTANT: Tenable's vuln export silently restricts results to findings
-    # found/fixed in the LAST 30 DAYS unless a time-based filter is supplied.
-    # To export everything we must send an explicit `since`. Default to 0 (epoch)
-    # for a full pull; honour --since / --days when given.
-    import time as _time
-    if args.since is not None:
-        filters["since"] = args.since
-    elif args.days is not None:
-        filters["since"] = int(_time.time()) - args.days * 86400
-    else:
-        filters["since"] = 0  # full export -- bypass the 30-day default window
+    filters = build_filters(
+        severity=args.severity, cve=args.cve, kev=args.kev,
+        state=args.state, since=args.since, days=args.days,
+    )
     if args.verbose:
-        window = "ALL findings (since=0)" if filters["since"] == 0 else f"since epoch {filters['since']}"
-        print(f"Export window: {window}")
+        window = "ALL findings (since=0)" if filters.get("since") == 0 else f"since epoch {filters['since']}"
+        applied = [k for k in ("severity", "cve_id", "cve_category", "state") if k in filters]
+        print(f"Export window: {window}" + (f"; filters: {', '.join(applied)}" if applied else ""))
 
     out_path = args.out or f"vulns.{args.format}"
     try:

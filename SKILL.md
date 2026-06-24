@@ -76,6 +76,9 @@ DevOps users who want terser, automation-oriented guidance.
 | --- | --- | --- |
 | All assets to a file | `python scripts/export_assets.py --out assets.csv` | VM or T1 |
 | All / filtered vulnerability findings | `python scripts/export_vulnerabilities.py --severity critical high --out vulns.csv` | VM or T1 |
+| Exposure to a specific CVE (e.g. Log4Shell) | `python scripts/export_vulnerabilities.py --cve CVE-2021-44228 --out cve.csv` | VM or T1 |
+| CISA Known Exploited (KEV) report | `python scripts/export_vulnerabilities.py --kev --out kev.csv` | VM or T1 |
+| Remediation tracking (fixed vs open) | `python scripts/export_vulnerabilities.py --state fixed --days 30 --out fixed.csv` | VM or T1 |
 | Cyber Exposure Score / Exposure View | `python scripts/get_exposure_score.py --out ces.csv` | **Tenable One** |
 | A list of scans, or one scan's results | `python scripts/get_scan_results.py` then `--scan-id <id>` | VM or T1 |
 | Just to verify access | any script with `--dry-run` | any |

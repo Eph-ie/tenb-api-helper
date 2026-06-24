@@ -39,6 +39,26 @@ python scripts/export_vulnerabilities.py --severity critical high --out vulns.cs
 python scripts/export_vulnerabilities.py --format json --out vulns.json
 ```
 
+### Common report shortcuts
+
+These cover the reports a vulnerability manager runs most often:
+
+```bash
+# Am I exposed to a specific CVE? (e.g. Log4Shell)
+python scripts/export_vulnerabilities.py --cve CVE-2021-44228 --out log4shell.csv
+
+# Everything in the CISA Known Exploited Vulnerabilities (KEV) catalogue
+python scripts/export_vulnerabilities.py --kev --out kev.csv
+
+# Remediation tracking: what's been fixed vs what's still open
+python scripts/export_vulnerabilities.py --state fixed --days 30 --out fixed_30d.csv
+python scripts/export_vulnerabilities.py --state open reopened --severity critical --out open_crit.csv
+```
+
+Flags combine — e.g. `--kev --severity critical` for critical KEV findings. CVE
+IDs are case-insensitive (`cve-2021-44228` works). `--state` values are `open`,
+`reopened`, `fixed`.
+
 ## How to read the output
 
 - **CSV** is a flat, analyst-friendly view: asset FQDN/IP, plugin id/name,

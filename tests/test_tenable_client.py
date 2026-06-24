@@ -63,9 +63,11 @@ def _client(session):
 
 class TestAuth(unittest.TestCase):
     def test_missing_keys_raises(self):
-        with mock.patch.dict(os.environ, {}, clear=True):
-            with self.assertRaises(AuthError):
-                TenableClient()
+        # Neutralise .env auto-loading so a real project .env doesn't supply keys.
+        with mock.patch("tenable_client.load_dotenv", return_value=None):
+            with mock.patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(AuthError):
+                    TenableClient()
 
 
 class TestRateLimit(unittest.TestCase):
@@ -170,6 +172,29 @@ class TestDotenv(unittest.TestCase):
                     self.assertEqual(_os.environ["TIO_SECRET_KEY"], "secret")
             finally:
                 _os.chdir(cwd)
+
+
+class TestVulnFilters(unittest.TestCase):
+    def _bf(self, **kw):
+        import importlib
+        ev = importlib.import_module("export_vulnerabilities")
+        return ev.build_filters(**kw)
+
+    def test_defaults_to_full_pull(self):
+        self.assertEqual(self._bf().get("since"), 0)
+
+    def test_cve_uppercased(self):
+        f = self._bf(cve=["cve-2021-44228"])
+        self.assertEqual(f["cve_id"], ["CVE-2021-44228"])
+
+    def test_kev_sets_category(self):
+        self.assertEqual(self._bf(kev=True)["cve_category"], ["cisa known exploitable"])
+
+    def test_state_uppercased(self):
+        self.assertEqual(self._bf(state=["fixed", "open"])["state"], ["FIXED", "OPEN"])
+
+    def test_days_window_not_zero(self):
+        self.assertNotEqual(self._bf(days=7)["since"], 0)
 
 
 class TestScans(unittest.TestCase):

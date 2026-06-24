@@ -3,6 +3,9 @@
 > Read-only Python scripts to get your data **out** of Tenable Vulnerability
 > Management and Tenable One — even if you don't have access to the Tenable One UI.
 
+**New here?** See [EXAMPLES.md](EXAMPLES.md) for the kinds of reports you can ask
+for, and [docs/00-start-here.md](docs/00-start-here.md) to set up your keys.
+
 ## Who this is for
 
 Tenable customers who hold valid API keys but want to pull, reshape, and export
