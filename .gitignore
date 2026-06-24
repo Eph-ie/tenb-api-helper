@@ -1,0 +1,17 @@
+# Secrets — never commit
+.env
+*.key
+
+# Output data — don't commit pulled customer data
+*.csv
+*.json
+!tests/**/*.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store
