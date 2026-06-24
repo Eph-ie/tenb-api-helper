@@ -30,6 +30,52 @@ LOG = logging.getLogger("tenable_client")
 
 DEFAULT_BASE_URL = "https://cloud.tenable.com"
 
+
+def load_dotenv() -> Optional[str]:
+    """
+    Load KEY=VALUE pairs from a `.env` file into the environment so you don't
+    have to `export` keys every session. Dependency-free.
+
+    Searches the current working directory and this file's directory, walking
+    up a few parent levels, and uses the first `.env` it finds. Existing
+    environment variables are NEVER overwritten (a real `export` always wins).
+    Supports an optional `export ` prefix and quoted values, e.g. both
+    `TIO_ACCESS_KEY=abc` and `export TIO_ACCESS_KEY="abc"` work.
+    """
+    seen = set()
+    starts = [os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
+    for start in starts:
+        here = start
+        for _ in range(6):
+            if here in seen:
+                break
+            seen.add(here)
+            candidate = os.path.join(here, ".env")
+            if os.path.isfile(candidate):
+                try:
+                    with open(candidate, "r", encoding="utf-8") as fh:
+                        for raw in fh:
+                            line = raw.strip()
+                            if not line or line.startswith("#"):
+                                continue
+                            if line.startswith("export "):
+                                line = line[len("export "):]
+                            if "=" not in line:
+                                continue
+                            key, _, val = line.partition("=")
+                            key = key.strip()
+                            val = val.strip().strip('"').strip("'")
+                            if key and key not in os.environ:
+                                os.environ[key] = val
+                except OSError:
+                    pass
+                return candidate
+            parent = os.path.dirname(here)
+            if parent == here:
+                break
+            here = parent
+    return None
+
 # Tenable user role values (from developer.tenable.com/docs/roles).
 # Used only to produce friendly pre-flight messages; the server is the real
 # authority on what a key may do.
@@ -66,12 +112,16 @@ class TenableClient:
         timeout: int = 60,
         session: Optional[requests.Session] = None,
     ) -> None:
+        # Auto-load a .env file if present so keys don't need exporting each run.
+        if not (access_key and secret_key):
+            load_dotenv()
         self.access_key = access_key or os.environ.get("TIO_ACCESS_KEY")
         self.secret_key = secret_key or os.environ.get("TIO_SECRET_KEY")
         if not self.access_key or not self.secret_key:
             raise AuthError(
-                "Missing API keys. Set TIO_ACCESS_KEY and TIO_SECRET_KEY "
-                "environment variables (do not hardcode them)."
+                "Missing API keys. Set TIO_ACCESS_KEY and TIO_SECRET_KEY as "
+                "environment variables, or put them in a .env file in the project "
+                "folder (copy .env.example to .env). Do not hardcode them."
             )
         self.base_url = (base_url or os.environ.get("TIO_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
         self.max_retries = max_retries

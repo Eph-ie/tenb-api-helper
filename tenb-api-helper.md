@@ -1,7 +1,7 @@
 ---
 name: "Tenable API Helper"
 author: "Joel Barnes"
-github_url: "https://github.com/Eph-ie/cyberagent-tenb"
+github_url: "https://github.com/Eph-ie/tenb-api-helper"
 description: "A self correcting API script creator for use with Tenable SaaS Solutions"
 license: "MIT"
 category: "agent"

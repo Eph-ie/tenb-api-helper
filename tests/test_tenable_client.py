@@ -153,6 +153,25 @@ class TestVulnExport(unittest.TestCase):
         self.assertEqual([r["plugin"]["id"] for r in rows], [1, 2, 3])
 
 
+class TestDotenv(unittest.TestCase):
+    def test_env_loaded_from_file_without_overwriting(self):
+        import tempfile, os as _os
+        from tenable_client import load_dotenv
+        with tempfile.TemporaryDirectory() as d:
+            with open(_os.path.join(d, ".env"), "w") as fh:
+                fh.write("# comment\nexport TIO_ACCESS_KEY=\"fromfile\"\nTIO_SECRET_KEY=secret\n")
+            cwd = _os.getcwd()
+            try:
+                _os.chdir(d)
+                with mock.patch.dict(_os.environ, {"TIO_ACCESS_KEY": "preset"}, clear=True):
+                    load_dotenv()
+                    # existing var preserved, missing var filled from file
+                    self.assertEqual(_os.environ["TIO_ACCESS_KEY"], "preset")
+                    self.assertEqual(_os.environ["TIO_SECRET_KEY"], "secret")
+            finally:
+                _os.chdir(cwd)
+
+
 class TestScans(unittest.TestCase):
     def test_list_scans_returns_array(self):
         script = [(lambda m, u: u.endswith("/scans"),
